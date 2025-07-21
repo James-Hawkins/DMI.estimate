@@ -27,14 +27,25 @@ unq.brdss <- unique(d$Variety)
 colnames(d)
 
 
-d <- d[  d$Species   , ]
-
-species.cattle <- c(   unq.spcs[3], unq.spcs[9]         )
+species.cattle <- c(   unq.spcs[3], unq.spcs[9]  )
 
 
 d <- d[  d$Species %in% species.cattle  , ]
 
 d <- data.frame(d)
+
+length(unique(d[, 'B.Code']))
+
+length(unique(d[  d$bw_kg != na.value , 'B.Code']))
+length(unique(d[  d$bw_kg != na.value & d$feed_intake_value != na.value & d$milk_kg_day == na.value, 'B.Code']))
+
+length(unique(d[  d$bw_kg != na.value & d$feed_intake_value != na.value & d$milk_kg_day == na.value , 'B.Code']))
+
+
+
+
+length(unique(d[  d$bw_kg != na.value & d$feed_intake_value != na.value & d$milk_kg_day == na.value, 'T.Animals']))
+
 
 
 # -- Dairy
@@ -55,8 +66,11 @@ breeds.dairy <- c(
   ,  unq.brdss[23]
   ,  unq.brdss[24]
   ,  unq.brdss[25]
+  ,  unq.brdss[29]
   ,  unq.brdss[30]
   ,  unq.brdss[32]
+  ,  unq.brdss[33]
+  ,  unq.brdss[34]
   ,  unq.brdss[37]
   ,  unq.brdss[38]
   ,  unq.brdss[39]
@@ -67,17 +81,18 @@ breeds.dairy <- c(
 dairy <- d[d$Variety %in% breeds.dairy , ]
 
 
-# SUbsetting based on nutrition
+# Subsetting based on nutrition
 
 dairy <- dairy[dairy$NDF_nutrition != na.value  , ]
 
 dairy <- dairy[dairy$CP_nutrition != na.value  , ]
 
+dairy <- dairy[dairy$DM_digest != na.value  , ]
+
+
 
 
 dairy <- dairy[dairy$ADF_nutrition != na.value  , ]
-
-dairy <- dairy[dairy$DM_digest != na.value  , ]
 
 dairy <- dairy[dairy$NE_nutrition != na.value  , ]
 
@@ -85,11 +100,15 @@ dairy <- dairy[dairy$ME_nutrition != na.value  , ]
 
 
 # Subsetting based on physiology
+dairy <- dairy[  dairy$bw_kg != 'NA'  , ]
+
+dairy <- dairy[  dairy$adg_g_day != 'NA'  , ]
+
 dairy <- dairy[  dairy$milk_kg_day != 'NA'  , ]
 
 dairy <- dairy[  dairy$Stage != 'NA'  , ]
 
-dairy <- dairy[  dairy$adg_g_day != 'NA'  , ]
+dairy[,'B.Code']
 
 
 
@@ -142,5 +161,80 @@ breeds.indicus <- c(
 )
 
 
+
+# Beef 
+breeds.beef <- c(
+  unq.brdss[35]
+  ,  unq.brdss[36]
+)
+
+
+
+beef <- d[d$Variety %in% breeds.beef , ]
+
+
+
+length(unique(beef$B.Code))
+length(unique(beef$A.Level.Name))
+sum(as.numeric(beef$T.Animals))
+
+
+
+# Breed indicus
+breeds.indicus <- unq.brdss[!(unq.brdss %in% breeds.dairy) ]
+  
+breeds.indicus <-
+  c(
+  unq.brdss[5]
+  ,  unq.brdss[6]
+  ,  unq.brdss[4]
+  
+  ,  unq.brdss[7]
+  ,  unq.brdss[8]
+  ,  unq.brdss[9]
+  ,  unq.brdss[11]
+  ,  unq.brdss[13]
+  ,  unq.brdss[19]
+  ,  unq.brdss[26]
+  ,  unq.brdss[27]
+  ,  unq.brdss[28]
+)
+
+
+zebu <- d[d$Variety %in% breeds.indicus , ]
+
+View(zebu)
+
+# SUbsetting based on nutrition
+zebu <- zebu[zebu$DM_digest != na.value  , ]
+
+zebu <- zebu[zebu$NDF_nutrition != na.value  , ]
+
+zebu <- zebu[zebu$CP_nutrition != na.value  , ]
+
+
+zebu <- zebu[zebu$ADF_nutrition != na.value  , ]
+
+zebu <- zebu[zebu$DM_digest != na.value  , ]
+
+zebu <- zebu[zebu$NE_nutrition != na.value  , ]
+
+zebu <- zebu[zebu$ME_nutrition != na.value  , ]
+
+
+# Subsetting based on physiology
+zebu <- zebu[  zebu$bw_kg != 'NA'  , ]
+
+
+zebu <- zebu[  zebu$milk_kg_day != 'NA'  , ]
+
+zebu <- zebu[  zebu$Stage != 'NA'  , ]
+
+zebu <- zebu[  zebu$adg_g_day != 'NA'  , ]
+
+
+length(unique(zebu$B.Code))
+length(unique(zebu$A.Level.Name))
+sum(as.numeric(zebu$T.Animals))
 
 
