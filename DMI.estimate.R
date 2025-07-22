@@ -21,28 +21,39 @@ d <<- read_excel('feed_intake_data+JH.xlsx'
 na.value <- 'NA'
 
 unq.spcs <- unique(d$Species)
-unq.brdss <- unique(d$Variety)
-
-
-colnames(d)
-
 
 species.cattle <- c(   unq.spcs[3], unq.spcs[9]  )
 
-
 d <- d[  d$Species %in% species.cattle  , ]
+
+
+unq.brdss <- unique(d$Variety)
+
+
+
+
 
 d <- data.frame(d)
 
 length(unique(d[, 'B.Code']))
 
 length(unique(d[  d$bw_kg != na.value , 'B.Code']))
+
+
 length(unique(d[  d$bw_kg != na.value & d$feed_intake_value != na.value & d$milk_kg_day == na.value, 'B.Code']))
 
 length(unique(d[  d$bw_kg != na.value & d$feed_intake_value != na.value & d$milk_kg_day == na.value , 'B.Code']))
 
-
-
+length(unique(d[ 
+  d$bw_kg != na.value 
+  & d$feed_intake_value != na.value 
+  & d$milk_kg_day != na.value 
+ # & d$NDF_nutrition != na.value 
+  & d$DM_digest != na.value 
+  , "A.Level.Name"]))
+  
+  
+ 
 
 length(unique(d[  d$bw_kg != na.value & d$feed_intake_value != na.value & d$milk_kg_day == na.value, 'T.Animals']))
 
@@ -83,9 +94,9 @@ dairy <- d[d$Variety %in% breeds.dairy , ]
 
 # Subsetting based on nutrition
 
-dairy <- dairy[dairy$NDF_nutrition != na.value  , ]
+dairy <- dairy[  dairy$NDF_nutrition != na.value  , ]
 
-dairy <- dairy[dairy$CP_nutrition != na.value  , ]
+dairy <- dairy[  dairy$CP_nutrition != na.value  , ]
 
 dairy <- dairy[dairy$DM_digest != na.value  , ]
 
