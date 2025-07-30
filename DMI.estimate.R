@@ -16,6 +16,9 @@ d <<- read_excel('feed_intake_data+JH.xlsx'
                                 , sheet = 'feed_intake_raw' 
                                 , col_types = "text")
 
+d <<- read_excel('Full_Feed_intake_data.xlsx'
+                 , sheet = 'Full_Feed_Intake_data' 
+                 , col_types = "text")
 
 
 na.value <- 'NA'
@@ -23,8 +26,14 @@ na.value <- 'NA'
 unq.spcs <- unique(d$Species)
 
 species.cattle <- c(   unq.spcs[3], unq.spcs[9]  )
+species.shoat <- c(unq.spcs[1] ,unq.spcs[2]  )
 
+# disaggregated data analysis
 d <- d[  d$Species %in% species.cattle  , ]
+
+
+
+
 
 
 unq.brdss <- unique(d$Variety)
@@ -247,5 +256,57 @@ zebu <- zebu[  zebu$adg_g_day != 'NA'  , ]
 length(unique(zebu$B.Code))
 length(unique(zebu$A.Level.Name))
 sum(as.numeric(zebu$T.Animals))
+
+
+
+# SHOATS
+shoats <- d[  d$Species %in% species.shoat  , ]
+
+length(unique(shoats$B.Code))
+
+
+shoats <- shoats[shoats$DM_digest != na.value  , ]
+shoats <- shoats[shoats$CP_nutrition != na.value  , ]
+shoats <- shoats[shoats$NDF_nutrition != na.value  , ]
+
+shoats <- shoats[shoats$bw_kg != na.value  , ]
+shoats <- shoats[shoats$adg_g_day != na.value  , ]
+shoats <- shoats[shoats$milk_kg_day != na.value  , ]
+shoats <- shoats[shoats$Stage != na.value  , ]
+
+
+# Goats
+goats <- d[  d$Species %in% species.shoat[2]  , ]
+
+
+goats <- goats[goats$DM_digest != na.value  , ]
+goats <- goats[goats$CP_nutrition != na.value  , ]
+goats <- goats[goats$NDF_nutrition != na.value  , ]
+
+goats <- goats[goats$bw_kg != na.value  , ]
+goats <- goats[goats$adg_g_day != na.value  , ]
+goats <- goats[goats$milk_kg_day != na.value  , ]
+goats <- goats[goats$Stage != na.value  , ]
+
+length(unique(goats$B.Code))
+length(unique(goats$A.Level.Name))
+
+# Sheep
+sheep <- d[  d$Species %in% species.shoat[1]  , ]
+
+sheep <- sheep[sheep$DM_digest != na.value  , ]
+sheep <- sheep[sheep$CP_nutrition != na.value  , ]
+sheep <- sheep[sheep$NDF_nutrition != na.value  , ]
+
+sheep <- sheep[sheep$bw_kg != na.value  , ]
+sheep <- sheep[sheep$adg_g_day != na.value  , ]
+sheep <- sheep[sheep$milk_kg_day != na.value  , ]
+sheep <- sheep[sheep$Stage != na.value  , ]
+
+
+length(unique(sheep$B.Code))
+length(unique(sheep$A.Level.Name))
+
+
 
 
