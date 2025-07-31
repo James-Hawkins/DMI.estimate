@@ -9,16 +9,44 @@ library('dplyr')
 library('ggpubr')
 library('stringi')
 library('stringr')
+library('lme4')
+library('lmerTest')
+library('MuMIn')
 
-
-
-d <<- read_excel('feed_intake_data+JH.xlsx'
-                                , sheet = 'feed_intake_raw' 
-                                , col_types = "text")
 
 d <<- read_excel('Full_Feed_intake_data.xlsx'
                  , sheet = 'Full_Feed_Intake_data' 
                  , col_types = "text")
+
+
+# Data prep
+{
+names(d)[2] <- 'diet.code'
+
+
+
+convert.numeric <- c(
+   'feed_intake_value'
+  , 'bw_kg'
+  , 'adg_g_day'
+  , 'NDF_nutrition'
+  ,  'ADF_nutrition'
+  ,  'ME_nutrition'
+  , 'DM_digest'
+  , 'CP_nutrition'
+  , 'milk_kg_day'
+  , 'T.Animals'
+  
+)
+d <- as.data.frame(d)
+
+for (v in convert.numeric){
+  
+  d[,v] <- as.numeric(d[,v] )
+  
+  
+}
+
 
 
 na.value <- 'NA'
@@ -27,6 +55,22 @@ unq.spcs <- unique(d$Species)
 
 species.cattle <- c(   unq.spcs[3], unq.spcs[9]  )
 species.shoat <- c(unq.spcs[1] ,unq.spcs[2]  )
+species.goat <- c(unq.spcs[2]  )
+species.sheep <- c(unq.spcs[1]  )
+
+
+unq.intake.units <- unique(d$feed_intake_unit)
+
+d[d$feed_intake_unit == unq.intake.units[1] , 'feed_intake_kg_d'] <- d[d$feed_intake_unit == unq.intake.units[1] , 'feed_intake_value'] 
+
+
+print(paste('Quantity of studies before outlier removal: ', length(unique(d$B.Code))))
+d <- d[ !is.na(d$feed_intake_kg_d) , ]
+d <- d[ !is.na(d$T.Animals) , ]
+print(paste('Quantity of studies after outlier removal: ', length(unique(d$B.Code))))
+
+
+}
 
 # disaggregated data analysis
 d <- d[  d$Species %in% species.cattle  , ]
@@ -260,7 +304,7 @@ sum(as.numeric(zebu$T.Animals))
 
 
 # SHOATS
-shoats <- d[  d$Species %in% species.shoat  , ]
+shoats <- d[  d$Species %in% species.sheep  , ]
 
 length(unique(shoats$B.Code))
 
@@ -276,7 +320,7 @@ shoats <- shoats[shoats$Stage != na.value  , ]
 
 
 # Goats
-goats <- d[  d$Species %in% species.shoat[2]  , ]
+goats <- d[  d$Species %in% species.goat  , ]
 
 
 goats <- goats[goats$DM_digest != na.value  , ]
@@ -291,8 +335,10 @@ goats <- goats[goats$Stage != na.value  , ]
 length(unique(goats$B.Code))
 length(unique(goats$A.Level.Name))
 
-# Sheep
-sheep <- d[  d$Species %in% species.shoat[1]  , ]
+# --- SHEEP
+sheep <- d[  d$Species %in% species.sheep  , ]
+
+sheep <- sheep[sheep$feed_intake_value != na.value, ]
 
 sheep <- sheep[sheep$DM_digest != na.value  , ]
 sheep <- sheep[sheep$CP_nutrition != na.value  , ]
@@ -305,8 +351,28 @@ sheep <- sheep[sheep$Stage != na.value  , ]
 
 
 length(unique(sheep$B.Code))
-length(unique(sheep$A.Level.Name))
+length(unique(sheep$diet.code))
+
+
+# Handle outliers
+min.feed.intake <- 0.1
+max.feed.intake <- 5
+sheep <- sheep[sheep$feed_intake_value > min.feed.intake & sheep$feed_intake_value <= max.feed.intake , ]
 
 
 
+# Apply weights
+mean.samp.sz <- mean(na.omit(sheep$T.Animals))
 
+sheep[, 'reg.weight'] <-  sheep[, 'T.Animals'] / mean.samp.sz 
+
+
+sp.mod.1 <- lmer( feed_intake_value ~  bw_kg +  adg_g_day + DM_digest +  NDF_nutrition + (1 | B.Code) , weights = reg.weight, data = sheep   )
+
+
+
+r.squaredGLMM(sp.mod.1)
+
+summary(sp.mod.1)
+coef(sp.mod.1)
+confint(sp.mod.1)
