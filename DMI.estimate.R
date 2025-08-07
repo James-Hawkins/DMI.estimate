@@ -99,6 +99,8 @@ length(unique(bovines[, 'diet.code']))
 
 
 
+{
+
 # -- Dairy
 breeds.dairy <- c(
   unq.brdss[1]
@@ -288,7 +290,7 @@ length(unique(zebu$B.Code))
 length(unique(zebu$A.Level.Name))
 sum(as.numeric(zebu$T.Animals))
 
-
+}
 
 
 
@@ -296,17 +298,95 @@ sum(as.numeric(zebu$T.Animals))
 goats <- d[  d$Species %in% species.goat  , ]
 
 
-goats <- goats[goats$DM_digest != na.value  , ]
+#goats <- goats[goats$DM_digest != na.value  , ]
 goats <- goats[goats$CP_nutrition != na.value  , ]
 goats <- goats[goats$NDF_nutrition != na.value  , ]
 
 goats <- goats[goats$bw_kg != na.value  , ]
 goats <- goats[goats$adg_g_day != na.value  , ]
-goats <- goats[goats$milk_kg_day != na.value  , ]
-goats <- goats[goats$Stage != na.value  , ]
+#goats <- goats[goats$milk_kg_day != na.value  , ]
+#goats <- goats[goats$Stage != na.value  , ]
 
 length(unique(goats$B.Code))
-length(unique(goats$A.Level.Name))
+length(unique(goats$diet.code))
+
+
+goats$T.Animals <- as.numeric(goats$T.Animals)
+mean.samp.sz <- mean(na.omit(goats$T.Animals))
+
+goats[, 'reg.weight'] <- goats[, 'T.Animals'] / mean.samp.sz 
+
+
+hist(goats$feed_intake_kg_d)
+hist(goats$NDF_nutrition)
+hist(sheep$CP_nutrition)
+hist(sheep$CP_nutrition)
+hist(goats$bw_kg)
+hist(goats$adg_g_day)
+
+# Outlier removal
+{
+  
+# Handle outliers
+min.feed.intake <- 0.1
+max.feed.intake <- 5
+goats <- goats[ goats$feed_intake_kg_d > min.feed.intake & goats$feed_intake_kg_d <= max.feed.intake , ]
+
+min.adg.g.d <- -1000
+max.adg.g.d <- 5000
+goats <- goats[goats$adg_g_day >  min.adg.g.d & goats$adg_g_day <= max.adg.g.d , ]
+
+  
+}
+
+
+gt.mod.1 <- lmer( 
+  feed_intake_kg_d * 1000 ~  bw_kg 
+  +  adg_g_day
+  + CP_nutrition 
+  +  NDF_nutrition
+  + EE_nutrition
+  + Ash_nutrition
+  + (
+    1 
+    + bw_kg 
+    # + adg_g_day 
+    # + CP_nutrition 
+    # +  NDF_nutrition
+    # + Ash_nutrition
+    #  + EE_nutrition
+    | B.Code)
+  #, weights = reg.weight
+  , data = goats 
+)
+
+gt.mod.1
+
+r.squaredGLMM(gt.mod.1)
+
+summary(gt.mod.1)
+coef(gt.mod.1)
+confint(gt.mod.1)
+
+
+r2.ffx <- r.squaredGLMM(gt.mod.1)[1]
+r2.cbined <- r.squaredGLMM(gt.mod.1)[2]
+r2.rfx <- r2.cbined - r2.rfx
+r2.rfx
+
+
+mod.sum <- tab_model(
+  gt.mod.1
+  #, logit.boran.ext 
+  #  , pred.labels = pred.labels ,
+  #  dv.labels = c("Zebu", "Boran"),
+  , string.pred = "Coefficient"
+  #  string.ci = "Conf. Int (95%)"
+  # string.p = "P-Value"
+)
+
+mod.sum
+
 
 # --- SHEEP
 sheep <- d[  d$Species %in% species.sheep  , ]
@@ -332,6 +412,8 @@ min.feed.intake <- 0.1
 max.feed.intake <- 5
 sheep <- sheep[sheep$feed_intake_value > min.feed.intake & sheep$feed_intake_value <= max.feed.intake , ]
 
+
+# Variable checks
 hist(sheep$NDF_nutrition)
 hist(sheep$CP_nutrition)
 hist(sheep$CP_nutrition)
@@ -339,6 +421,29 @@ hist(sheep$CP_nutrition)
 hist(sheep$bw_kg)
 hist(sheep$adg_g_day)
 
+cor(na.omit(sheep$bw_kg) , na.omit(sheep$CP_nutrition))
+
+
+variables.to.check <- c(
+  'bw_kg'
+  , 'adg_g_day'
+  , 'NDF_nutrition'
+  , 'CP_nutrition'
+  )
+
+for (v in variables.to.check){
+  
+  for (v2 in variables.to.check[ -c(which(variables.to.check == "CP_nutrition"))]  ){
+  
+cor <- cor(
+sheep[complete.cases(sheep[,c(v, v2)]),v]
+,sheep[complete.cases(sheep[,c(v , v2)]),v2]
+)
+  
+print(paste('correlation between ' ,v ,'and ',v2,': ' ,cor ))    
+    
+}
+}
 
 
 
@@ -350,18 +455,32 @@ sheep[, 'reg.weight'] <-  sheep[, 'T.Animals'] / mean.samp.sz
 
 
 sp.mod.1 <- lmer( 
-  feed_intake_value ~  bw_kg 
+  feed_intake_kg_d * 1000 ~  bw_kg 
   +  adg_g_day
   + CP_nutrition 
   +  NDF_nutrition
-  + (1 | B.Code)
-  #, weights = reg.weight
-  , data = sheep  
+  + Ash_nutrition
+  + EE_nutrition
+  + (
+    1 
+    + bw_kg 
+   # + adg_g_day 
+   # + CP_nutrition 
+   # +  NDF_nutrition
+   # + Ash_nutrition
+  #  + EE_nutrition
+      | B.Code)
+  , weights = reg.weight
+  , data = sheep
+ # , data = sheep[sheep$bw_kg > mean(na.omit(sheep$bw_kg )), ]  
   )
 
 
 
-r.squaredGLMM(sp.mod.1)
+r2.ffx <- r.squaredGLMM(sp.mod.1)[1]
+r2.cbined <- r.squaredGLMM(sp.mod.1)[2]
+r2.rfx <- r2.cbined - r2.rfx
+r2.rfx
 
 summary(sp.mod.1)
 coef(sp.mod.1)
