@@ -12,11 +12,24 @@ library('stringr')
 library('lme4')
 library('lmerTest')
 library('MuMIn')
+library('sjPlot')
+library('sjmisc')
+library('sjlabelled')
+
+save.image('dmi.estimate.RData')
+
 
 
 d <<- read_excel('Full_Feed_intake_data.xlsx'
                  , sheet = 'Full_Feed_Intake_data' 
                  , col_types = "text")
+
+
+d <<- read_excel('feed_intake_data.xlsx'
+                 , sheet = 'feed_intake_raw' 
+                 , col_types = "text")
+
+colnames(d)
 
 
 # Data prep
@@ -73,42 +86,16 @@ print(paste('Quantity of studies after outlier removal: ', length(unique(d$B.Cod
 }
 
 # disaggregated data analysis
-d <- d[  d$Species %in% species.cattle  , ]
-
-
-
-
-
-
-unq.brdss <- unique(d$Variety)
-
-
-
-
-
 d <- data.frame(d)
-
-length(unique(d[, 'B.Code']))
-
-length(unique(d[  d$bw_kg != na.value , 'B.Code']))
+bovines <- d[  d$Species %in% species.cattle  , ]
 
 
-length(unique(d[  d$bw_kg != na.value & d$feed_intake_value != na.value & d$milk_kg_day == na.value, 'B.Code']))
+unq.brdss <- unique(bovines$Variety)
 
-length(unique(d[  d$bw_kg != na.value & d$feed_intake_value != na.value & d$milk_kg_day == na.value , 'B.Code']))
+bovines <- data.frame(bovines)
 
-length(unique(d[ 
-  d$bw_kg != na.value 
-  & d$feed_intake_value != na.value 
-  & d$milk_kg_day != na.value 
- # & d$NDF_nutrition != na.value 
-  & d$DM_digest != na.value 
-  , "A.Level.Name"]))
-  
-  
- 
-
-length(unique(d[  d$bw_kg != na.value & d$feed_intake_value != na.value & d$milk_kg_day == na.value, 'T.Animals']))
+length(unique(bovines[, 'B.Code']))
+length(unique(bovines[, 'diet.code']))
 
 
 
@@ -142,7 +129,7 @@ breeds.dairy <- c(
 
 
 
-dairy <- d[d$Variety %in% breeds.dairy , ]
+dairy <- bovines[d$Variety %in% breeds.dairy , ]
 
 
 # Subsetting based on nutrition
@@ -303,20 +290,6 @@ sum(as.numeric(zebu$T.Animals))
 
 
 
-# SHOATS
-shoats <- d[  d$Species %in% species.sheep  , ]
-
-length(unique(shoats$B.Code))
-
-
-shoats <- shoats[shoats$DM_digest != na.value  , ]
-shoats <- shoats[shoats$CP_nutrition != na.value  , ]
-shoats <- shoats[shoats$NDF_nutrition != na.value  , ]
-
-shoats <- shoats[shoats$bw_kg != na.value  , ]
-shoats <- shoats[shoats$adg_g_day != na.value  , ]
-shoats <- shoats[shoats$milk_kg_day != na.value  , ]
-shoats <- shoats[shoats$Stage != na.value  , ]
 
 
 # Goats
@@ -359,6 +332,15 @@ min.feed.intake <- 0.1
 max.feed.intake <- 5
 sheep <- sheep[sheep$feed_intake_value > min.feed.intake & sheep$feed_intake_value <= max.feed.intake , ]
 
+hist(sheep$NDF_nutrition)
+hist(sheep$CP_nutrition)
+hist(sheep$CP_nutrition)
+
+hist(sheep$bw_kg)
+hist(sheep$adg_g_day)
+
+
+
 
 
 # Apply weights
@@ -367,7 +349,15 @@ mean.samp.sz <- mean(na.omit(sheep$T.Animals))
 sheep[, 'reg.weight'] <-  sheep[, 'T.Animals'] / mean.samp.sz 
 
 
-sp.mod.1 <- lmer( feed_intake_value ~  bw_kg +  adg_g_day + DM_digest +  NDF_nutrition + (1 | B.Code) , weights = reg.weight, data = sheep   )
+sp.mod.1 <- lmer( 
+  feed_intake_value ~  bw_kg 
+  +  adg_g_day
+  + CP_nutrition 
+  +  NDF_nutrition
+  + (1 | B.Code)
+  #, weights = reg.weight
+  , data = sheep  
+  )
 
 
 
@@ -376,3 +366,16 @@ r.squaredGLMM(sp.mod.1)
 summary(sp.mod.1)
 coef(sp.mod.1)
 confint(sp.mod.1)
+
+mod.sum <- tab_model(
+  sp.mod.1
+  #, logit.boran.ext 
+#  , pred.labels = pred.labels ,
+#  dv.labels = c("Zebu", "Boran"),
+   , string.pred = "Coefficient"
+#  string.ci = "Conf. Int (95%)"
+ # string.p = "P-Value"
+)
+
+mod.sum
+
