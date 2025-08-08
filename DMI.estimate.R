@@ -15,6 +15,9 @@ library('MuMIn')
 library('sjPlot')
 library('sjmisc')
 library('sjlabelled')
+library(sjstats)
+
+
 
 save.image('dmi.estimate.RData')
 
@@ -44,6 +47,8 @@ convert.numeric <- c(
   , 'adg_g_day'
   , 'NDF_nutrition'
   ,  'ADF_nutrition'
+  , 'EE_nutrition'
+  ,'Ash_nutrition'
   ,  'ME_nutrition'
   , 'DM_digest'
   , 'CP_nutrition'
@@ -52,6 +57,7 @@ convert.numeric <- c(
   
 )
 d <- as.data.frame(d)
+
 
 for (v in convert.numeric){
   
@@ -77,30 +83,35 @@ unq.intake.units <- unique(d$feed_intake_unit)
 d[d$feed_intake_unit == unq.intake.units[1] , 'feed_intake_kg_d'] <- d[d$feed_intake_unit == unq.intake.units[1] , 'feed_intake_value'] 
 
 
+
+d <- d[d$feed_intake_unit == unq.intake.units[1] , ] 
+
+
+d$feed_intake_g_d <- d$feed_intake_kg_d * 1000
+
 print(paste('Quantity of studies before outlier removal: ', length(unique(d$B.Code))))
 d <- d[ !is.na(d$feed_intake_kg_d) , ]
 d <- d[ !is.na(d$T.Animals) , ]
 print(paste('Quantity of studies after outlier removal: ', length(unique(d$B.Code))))
 
 
+d <- data.frame(d)
+
 }
 
 # disaggregated data analysis
-d <- data.frame(d)
-bovines <- d[  d$Species %in% species.cattle  , ]
 
 
-unq.brdss <- unique(bovines$Variety)
 
-bovines <- data.frame(bovines)
-
-length(unique(bovines[, 'B.Code']))
-length(unique(bovines[, 'diet.code']))
 
 
 
 {
 
+bovines <- d[  d$Species %in% species.cattle  , ]
+  unq.brdss <- unique(bovines$Variety)
+  
+  
 # -- Dairy
 breeds.dairy <- c(
   unq.brdss[1]
@@ -298,14 +309,14 @@ sum(as.numeric(zebu$T.Animals))
 goats <- d[  d$Species %in% species.goat  , ]
 
 
-#goats <- goats[goats$DM_digest != na.value  , ]
+
 goats <- goats[goats$CP_nutrition != na.value  , ]
 goats <- goats[goats$NDF_nutrition != na.value  , ]
 
 goats <- goats[goats$bw_kg != na.value  , ]
 goats <- goats[goats$adg_g_day != na.value  , ]
-#goats <- goats[goats$milk_kg_day != na.value  , ]
-#goats <- goats[goats$Stage != na.value  , ]
+goats <- goats[goats$EE_nutrition != na.value  , ]
+goats <- goats[goats$Ash_nutrition != na.value  , ]
 
 length(unique(goats$B.Code))
 length(unique(goats$diet.code))
@@ -317,12 +328,19 @@ mean.samp.sz <- mean(na.omit(goats$T.Animals))
 goats[, 'reg.weight'] <- goats[, 'T.Animals'] / mean.samp.sz 
 
 
-hist(goats$feed_intake_kg_d)
+hist(goats$feed_intake_g_d)
 hist(goats$NDF_nutrition)
-hist(sheep$CP_nutrition)
-hist(sheep$CP_nutrition)
+hist(goats$CP_nutrition)
+hist(goats$EE_nutrition)
+hist(goats$Ash_nutrition)
+hist(goats$CP_nutrition)
 hist(goats$bw_kg)
 hist(goats$adg_g_day)
+
+
+plot(goats$NDF_nutrition , goats$feed_intake_kg_d , )
+
+
 
 # Outlier removal
 {
@@ -336,33 +354,42 @@ min.adg.g.d <- -1000
 max.adg.g.d <- 5000
 goats <- goats[goats$adg_g_day >  min.adg.g.d & goats$adg_g_day <= max.adg.g.d , ]
 
+min.ndf.g.kg <- 100
+max.ndf.g.kg <- 1000
+goats <- goats[goats$NDF_nutrition >  min.ndf.g.kg & goats$NDF_nutrition <= max.ndf.g.kg  , ]
+
   
 }
 
 
 gt.mod.1 <- lmer( 
-  feed_intake_kg_d * 1000 ~  bw_kg 
+  feed_intake_g_d  ~  bw_kg 
   +  adg_g_day
   + CP_nutrition 
   +  NDF_nutrition
-  + EE_nutrition
   + Ash_nutrition
   + (
-    1 
-    + bw_kg 
-    # + adg_g_day 
-    # + CP_nutrition 
+     - 1 
+   + bw_kg 
+   #  + adg_g_day 
+   #  + CP_nutrition 
     # +  NDF_nutrition
-    # + Ash_nutrition
+   #  + Ash_nutrition
     #  + EE_nutrition
     | B.Code)
-  #, weights = reg.weight
-  , data = goats 
+  , weights = reg.weight
+  , data = goats#[goats$CP_nutrition >= 150 , ]
 )
+
+r.squaredGLMM(gt.mod.1)
+
+goats$residuals <- residuals(gt.mod.1 )
+
+rmse(gt.mod.1) / (mean(na.omit(goats$  feed_intake_g_d )))
+
 
 gt.mod.1
 
-r.squaredGLMM(gt.mod.1)
 
 summary(gt.mod.1)
 coef(gt.mod.1)
@@ -391,16 +418,16 @@ mod.sum
 # --- SHEEP
 sheep <- d[  d$Species %in% species.sheep  , ]
 
-sheep <- sheep[sheep$feed_intake_value != na.value, ]
+sheep <- sheep[!is.na(sheep$feed_intake_value) , ]
 
-sheep <- sheep[sheep$DM_digest != na.value  , ]
-sheep <- sheep[sheep$CP_nutrition != na.value  , ]
-sheep <- sheep[sheep$NDF_nutrition != na.value  , ]
+sheep <- sheep[!is.na(sheep$DM_digest)   , ]
+sheep <- sheep[!is.na(sheep$CP_nutrition)  , ]
+sheep <- sheep[!is.na(sheep$NDF_nutrition)   , ]
 
-sheep <- sheep[sheep$bw_kg != na.value  , ]
-sheep <- sheep[sheep$adg_g_day != na.value  , ]
-sheep <- sheep[sheep$milk_kg_day != na.value  , ]
-sheep <- sheep[sheep$Stage != na.value  , ]
+sheep <- sheep[!is.na(sheep$bw_kg )  , ]
+sheep <- sheep[!is.na(sheep$adg_g_day)  , ]
+sheep <- sheep[!is.na(sheep$milk_kg_day)  , ]
+sheep <- sheep[!is.na(sheep$Stage)  , ]
 
 
 length(unique(sheep$B.Code))
@@ -414,8 +441,8 @@ sheep <- sheep[sheep$feed_intake_value > min.feed.intake & sheep$feed_intake_val
 
 
 # Variable checks
+hist(sheep$feed_intake_g_d)
 hist(sheep$NDF_nutrition)
-hist(sheep$CP_nutrition)
 hist(sheep$CP_nutrition)
 
 hist(sheep$bw_kg)
@@ -449,32 +476,57 @@ print(paste('correlation between ' ,v ,'and ',v2,': ' ,cor ))
 
 
 # Apply weights
-mean.samp.sz <- mean(na.omit(sheep$T.Animals))
+sp.mean.samp.sz <- mean(na.omit(sheep$T.Animals))
 
-sheep[, 'reg.weight'] <-  sheep[, 'T.Animals'] / mean.samp.sz 
+sheep[, 'reg.weight'] <-  .125 * sheep[, 'T.Animals']# / sp.mean.samp.sz 
+
+
+vars.1 <- c(
+  'feed_intake_g_d'
+  ,  'bw_kg'
+  ,   'CP_nutrition' 
+  ,  'NDF_nutrition'
+  ,'Ash_nutrition'
+)
+
+sheep.cc.f1 <- sheep[complete.cases(sheep[,vars.1]),]
+sheep.cc.f1 <- sheep.cc.f1[  !(sheep.cc.f1$diet.code %in% ol.ids) , ]
+
+
+sheep.cc.f1$reg.weight <- sheep.cc.f1[, 'T.Animals'] / sp.mean.samp.sz 
 
 
 sp.mod.1 <- lmer( 
-  feed_intake_kg_d * 1000 ~  bw_kg 
-  +  adg_g_day
+  feed_intake_g_d  ~  bw_kg 
+ # +  adg_g_day
   + CP_nutrition 
   +  NDF_nutrition
   + Ash_nutrition
-  + EE_nutrition
+ # + EE_nutrition
   + (
     1 
-    + bw_kg 
+   # + bw_kg 
    # + adg_g_day 
    # + CP_nutrition 
    # +  NDF_nutrition
    # + Ash_nutrition
   #  + EE_nutrition
       | B.Code)
-  , weights = reg.weight
-  , data = sheep
+ , weights = reg.weight
+  , data = sheep.cc.f1
  # , data = sheep[sheep$bw_kg > mean(na.omit(sheep$bw_kg )), ]  
   )
 
+sheep.cc.f1$resds <- residuals(sp.mod.1)
+
+View(sheep.cc.f1)
+
+
+ol.ids <- sheep.cc.f1[ abs(sheep.cc.f1$resds) > 170 , 'diet.code'  ]
+
+
+
+r.squaredGLMM(sp.mod.1)
 
 
 r2.ffx <- r.squaredGLMM(sp.mod.1)[1]
@@ -485,6 +537,12 @@ r2.rfx
 summary(sp.mod.1)
 coef(sp.mod.1)
 confint(sp.mod.1)
+
+
+
+
+
+
 
 mod.sum <- tab_model(
   sp.mod.1
