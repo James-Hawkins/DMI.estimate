@@ -18,7 +18,7 @@ library('sjlabelled')
 library(sjstats)
 library('performance')
 library(partR2)
-
+library(MASS)
 
 
 save.image('dmi.estimate.RData')
@@ -319,11 +319,6 @@ length(unique(goats$B.Code))
 length(unique(goats$diet.code))
 
 
-goats.cc.f1$T.Animals <- as.numeric(goats.cc.f1$T.Animals)
-mean.samp.sz <- mean(na.omit(goats.cc.f1$T.Animals))
-
-goats.cc.f1[, 'reg.weight'] <- goats.cc.f1[, 'T.Animals'] / mean.samp.sz 
-
 
 hist(goats.cc.f1$feed_intake_g_d)
 hist(goats.cc.f1$NDF_nutrition)
@@ -338,8 +333,24 @@ hist(goats.cc.f1$adg_g_day)
 plot(goats$NDF_nutrition , goats$feed_intake_kg_d , )
 
 
-vars.1 <- c(
-  'feed_intake_g_d'
+form.1 <- c(
+  'feeding.level.g.d.kg.bw'
+  ,  'bw_kg'
+  ,   'CP_nutrition' 
+  ,  'NDF_nutrition'
+)
+
+form.2 <- c(
+  'feeding.level.g.d.kg.bw'
+  ,  'bw_kg'
+  , 'adg_g_day'
+  ,   'CP_nutrition' 
+  ,  'NDF_nutrition'
+
+)
+
+form.3 <- c(
+  'feeding.level.g.d.kg.bw'
   ,  'bw_kg'
   , 'adg_g_day'
   ,   'CP_nutrition' 
@@ -351,17 +362,32 @@ vars.1 <- c(
 )
 
 
-goats.cc.f1 <- goats[complete.cases(goats[,vars.1]),]
+
+goats.cc.f1 <- goats[complete.cases(goats[,form.1]),]
+goats.cc.f2 <- goats[complete.cases(goats[,form.2]),]
+goats.cc.f3 <- goats[complete.cases(goats[,form.3]),]
+
+
+
+
+
+# Outlier removal
+
 goats.cc.f1 <- goats.cc.f1[  !(goats.cc.f1$diet.code %in% ol.ids) , ]
+
 
 ol.ids <- goats.cc.f1[ abs(goats.cc.f1$residuals) > 2* mean(abs(goats.cc.f1$residuals)) , 'diet.code'  ]
 
 
-shapiro.test(goats.cc.f1$feed_intake_g_d)
+
+# Normality tests
+shapiro.test(goats.cc.f1$feeding.level.g.d.kg.bw)
 shapiro.test(goats.cc.f1$adg_g_day)
 shapiro.test(goats.cc.f1$bw_kg)
 shapiro.test(goats.cc.f1$CP_nutrition)
-
+shapiro.test(goats.cc.f1$NDF_nutrition)
+shapiro.test(goats.cc.f1$EE_nutrition)
+shapiro.test(goats.cc.f1$Ash_nutrition)
 
 # Outlier removal
 {
@@ -393,99 +419,179 @@ max.ash <- 150
 goats.cc.f1 <- goats.cc.f1[goats.cc.f1$Ash_nutrition >  min.ash & goats.cc.f1$Ash_nutrition <= max.ash  , ]
 
 
- goats.cc.f1$feed_intake_g_d.std <- (goats.cc.f1$feed_intake_g_d - mean(goats.cc.f1$feed_intake_g_d ))/ mean(goats.cc.f1$feed_intake_g_d) 
- 
- goats.cc.f1$feed_intake_g_d.ln <- log(goats.cc.f1$feed_intake_g_d ) 
- 
-  goats$bw_kg.sqrd <- goats$bw_kg^2
-  goats$bw_kg.sqrt <- goats$bw_kg^.5
-  
-  
-  goats.cc.f1$feeding.rate <- goats.cc.f1$feed_intake_g_d / log(goats.cc.f1$bw_kg)
 }
+
+# Variable transform
+{
+goats.cc.f1$feed_intake_g_d.std <- (goats.cc.f1$feed_intake_g_d - mean(goats.cc.f1$feed_intake_g_d ))/ mean(goats.cc.f1$feed_intake_g_d) 
+
+goats.cc.f1$feed_intake_g_d.ln <- log(goats.cc.f1$feed_intake_g_d ) 
+
+goats$bw_kg.sqrd <- goats$bw_kg^2
+goats$bw_kg.sqrt <- goats$bw_kg^.5
+
+
+
+
+}
+
+library(MASS)
+
+# Regression parameters
+goats.cc.lo.NDF.weight.coef <- 0.5
+goats.cc.hi.ndf.weight.coef  <- 0.2
 
 
 
 ndf.thresh.lo <- 300
 ndf.thresh.hi <- 600
 
-goats.cc.lo.NDF <- goats.cc.f1[goats.cc.f1$NDF_nutrition <= ndf.thresh ,]
-goats.cc.hi.NDF <- goats.cc.f1[goats.cc.f1$NDF_nutrition >= ndf.thresh.hi ,]
+goats.cc.f1.lo.ndf <- goats.cc.f1[goats.cc.f1$NDF_nutrition <= ndf.thresh ,]
+goats.cc.f1.hi.ndf <- goats.cc.f1[goats.cc.f1$NDF_nutrition >= ndf.thresh.hi ,]
+
+goats.cc.f2.lo.ndf <- goats.cc.f2[goats.cc.f2$NDF_nutrition <= ndf.thresh ,]
+goats.cc.f2.hi.ndf <- goats.cc.f2[goats.cc.f2$NDF_nutrition >= ndf.thresh.hi ,]
+
+goats.cc.f3.lo.ndf <- goats.cc.f3[goats.cc.f3$NDF_nutrition <= ndf.thresh ,]
+goats.cc.f3.hi.ndf <- goats.cc.f3[goats.cc.f3$NDF_nutrition >= ndf.thresh.hi ,]
+
+
+goats.cc.f1.hi.ndf <- goats.cc.f1[goats.cc.f1$NDF_nutrition <= ndf.thresh ,]
+goats.cc.f1.hi.ndf <- goats.cc.f1[goats.cc.f1$NDF_nutrition >= ndf.thresh.hi ,]
+
+goats.cc.f2.hi.ndf <- goats.cc.f2[goats.cc.f2$NDF_nutrition <= ndf.thresh ,]
+goats.cc.f2.hi.ndf <- goats.cc.f2[goats.cc.f2$NDF_nutrition >= ndf.thresh.hi ,]
+
+goats.cc.f3.hi.ndf <- goats.cc.f3[goats.cc.f3$NDF_nutrition <= ndf.thresh ,]
+goats.cc.f3.hi.ndf <- goats.cc.f3[goats.cc.f3$NDF_nutrition >= ndf.thresh.hi ,]
+
+
 
 gt.mod.1.lo.ndf <- lmer( 
 
   feeding.level.g.d.kg.bw ~
-     
-    log(bw_kg) 
-  +  adg_g_day #* adg_g_day
-  + log(CP_nutrition)
-  +  log(NDF_nutrition)
-  + log(Ash_nutrition)
- + log(EE_nutrition)
+    
+    bw_kg
+  + CP_nutrition
+  + NDF_nutrition
   + (
      1 
- # + bw_kg 
-  #  + adg_g_day 
-   # + CP_nutrition
-  #  +  NDF_nutrition
- # + Ash_nutrition
-  #    + EE_nutrition
     | B.Code)
- , weights = 0.05 *goats.cc.lo.NDF$T.Animals / mean(na.omit(goats.cc.lo.NDF$T.Animals))
-  , data = goats.cc.lo.NDF
+ , weights = goats.cc.lo.NDF.weight.coef *goats.cc.f1.lo.NDF$T.Animals / mean(na.omit(goats.cc.f1.lo.NDF$T.Animals))
+  , data = goats.cc.f1.lo.NDF
 )
+
+r2_nakagawa(gt.mod.1.lo.ndf)
+rmse(gt.mod.1.lo.ndf) / (mean(na.omit(abs(goats.cc.f1.lo.NDF$feeding.level.g.d.kg.bw ) )))
+
+
+
+gt.mod.2.lo.ndf <- lmer( 
+  
+  feeding.level.g.d.kg.bw ~
+    
+    bw_kg
+  + adg_g_day
+  + CP_nutrition
+  + NDF_nutrition
+  + (
+    1 
+    | B.Code)
+  , weights = goats.cc.lo.NDF.weight.coef *goats.cc.f2.lo.NDF$T.Animals / mean(na.omit(goats.cc.f2.lo.NDF$T.Animals))
+  , data = goats.cc.f2.lo.NDF
+)
+
+r2_nakagawa(gt.mod.2.lo.ndf)
+rmse(gt.mod.2.lo.ndf) / (mean(na.omit(abs(goats.cc.f2.lo.NDF$feeding.level.g.d.kg.bw ) )))
+
+
+
+gt.mod.3.lo.ndf <- lmer( 
+  
+  feeding.level.g.d.kg.bw ~
+    
+    bw_kg
+  + adg_g_day
+  + CP_nutrition
+  + NDF_nutrition
+  + EE_nutrition
+  + Ash_nutrition
+  + (
+    1 
+    | B.Code)
+  , weights = goats.cc.lo.NDF.weight.coef *goats.cc.f3.lo.NDF$T.Animals / mean(na.omit(goats.cc.f2.lo.NDF$T.Animals))
+  , data = goats.cc.f3.lo.NDF
+)
+
+r2_nakagawa(gt.mod.3.lo.ndf)
+rmse(gt.mod.3.lo.ndf) / (mean(na.omit(abs(goats.cc.f3.lo.NDF$feeding.level.g.d.kg.bw ) )))
+
+
+
+# High NDF
 
 gt.mod.1.hi.ndf <- lmer( 
   
   feeding.level.g.d.kg.bw ~
-  #  feeding.rate ~
     
-    bw_kg 
-  +  adg_g_day * adg_g_day
+    bw_kg
   + CP_nutrition
-  +  NDF_nutrition
-  + log(Ash_nutrition)
-  + log(EE_nutrition)
- # + log(ADF_nutrition)
+  + NDF_nutrition
   + (
     1 
-    # + bw_kg 
-    #  + adg_g_day 
-    # + CP_nutrition
-    #  +  NDF_nutrition
-    # + Ash_nutrition
-    #   + EE_nutrition
     | B.Code)
-  , weights = 1 * goats.cc.hi.NDF$T.Animals / (max(na.omit(goats.cc.hi.NDF$T.Animals)) - min(na.omit(goats.cc.hi.NDF$T.Animals)))
-  , data = goats.cc.hi.NDF
+  , weights = goats.cc.hi.ndf.weight.coef *goats.cc.f1.hi.ndf$T.Animals / mean(na.omit(goats.cc.f1.hi.ndf$T.Animals))
+  , data = goats.cc.f1.hi.ndf
 )
 
 r2_nakagawa(gt.mod.1.hi.ndf)
-rmse(gt.mod.1.hi.ndf) / (mean(na.omit(abs(goats.cc.f1.lo.NDF$feeding.rate ) )))
-rmse(gt.mod.1.hi.ndf) / mean((predict(gt.mod.1.hi.ndf)))
+rmse(gt.mod.1.hi.ndf) / (mean(na.omit(abs(goats.cc.f1.hi.ndf$feeding.level.g.d.kg.bw ) )))
+
+
+
+gt.mod.2.hi.ndf <- lmer( 
+  
+  feeding.level.g.d.kg.bw ~
+    
+    bw_kg
+  + adg_g_day
+  + CP_nutrition
+  + NDF_nutrition
+  + (
+    1 
+    | B.Code)
+  , weights = goats.cc.hi.ndf.weight.coef *goats.cc.f2.hi.ndf$T.Animals / mean(na.omit(goats.cc.f2.hi.ndf$T.Animals))
+  , data = goats.cc.f2.hi.ndf
+)
+
+r2_nakagawa(gt.mod.2.hi.ndf)
+rmse(gt.mod.2.hi.ndf) / (mean(na.omit(abs(goats.cc.f2.hi.ndf$feeding.level.g.d.kg.bw ) )))
+
+
+
+gt.mod.3.hi.ndf <- lmer( 
+  
+  feeding.level.g.d.kg.bw ~
+    
+    bw_kg
+  + adg_g_day
+  + CP_nutrition
+  + NDF_nutrition
+  + EE_nutrition
+  + Ash_nutrition
+  + (
+    1 
+    | B.Code)
+  , weights = goats.cc.hi.ndf.weight.coef *goats.cc.f3.hi.ndf$T.Animals / mean(na.omit(goats.cc.f2.hi.ndf$T.Animals))
+  , data = goats.cc.f3.hi.ndf
+)
+
+r2_nakagawa(gt.mod.3.hi.ndf)
+rmse(gt.mod.3.hi.ndf) / (mean(na.omit(abs(goats.cc.f3.hi.ndf$feeding.level.g.d.kg.bw ) )))
 
 
 
 
-part <- partR2(gt.mod.1,
-               partvars = c("bw_kg"),
-               nboot = 100)
-
-
-summary(part)  
-
-
-
-nrow(goats.cc.f1)
-
-r.squaredGLMM(gt.mod.1)
-
-goats.cc.f1$residuals <- residuals(gt.mod.1)
-goats.cc.f1$fitted <- predict(gt.mod.1 )
-
-
-
-gt.mod.1
 
 
 summary(gt.mod.1)
@@ -493,34 +599,108 @@ coef(gt.mod.1)
 confint(gt.mod.1)
 
 
-r2.ffx <- r.squaredGLMM(gt.mod.1)[1]
-r2.cbined <- r.squaredGLMM(gt.mod.1)[2]
-r2.rfx <- r2.cbined - r2.rfx
-r2.rfx
+goats.cc.f1.hi.ndf$fitted <- predict(gt.mod.1.hi.ndf )
+goats.cc.f2.hi.ndf$fitted <- predict(gt.mod.2.hi.ndf )
+goats.cc.f3.hi.ndf$fitted <- predict(gt.mod.3.hi.ndf )
+goats.cc.f1.lo.ndf$fitted <- predict(gt.mod.1.lo.ndf )
+goats.cc.f2.lo.ndf$fitted <- predict(gt.mod.2.lo.ndf )
+goats.cc.f3.lo.ndf$fitted <- predict(gt.mod.3.lo.ndf )
 
+
+
+html.file.name <- "DMI.model.summary.html"
+
+dv.labels.list <- c('Form 1' , 'Form 2' , 'Form 3')
+dv.labels.list <- c(dv.labels.list , dv.labels.list)
+pred.labels.list <- c(
+  'Intercept' 
+  , 'Bodyweight (kg)'
+  , 'Crude protein (g kg)'
+  , 'Neutral detergent fibre (g kg)'
+  , 'Average daily gain (g d)'
+  , 'Ether extract (g d)'
+  , 'Ash (g d)'
+  
+  )
+#  https://www.rdocumentation.org/packages/sjPlot/versions/2.8.17/topics/tab_model
 
 mod.sum <- tab_model(
+  
   gt.mod.1.lo.ndf
-  ,   gt.mod.1.hi.ndf
-  #, logit.boran.ext 
-  #  , pred.labels = pred.labels ,
-  #  dv.labels = c("Zebu", "Boran"),
+  , gt.mod.2.lo.ndf
+  , gt.mod.3.lo.ndf
+  
+  , gt.mod.1.hi.ndf
+  , gt.mod.2.hi.ndf
+  , gt.mod.3.hi.ndf
+  
+  
+   , pred.labels = pred.labels.list 
+   ,  dv.labels = dv.labels.list 
   , string.pred = "Coefficient"
   #  string.ci = "Conf. Int (95%)"
   # string.p = "P-Value"
+  , file = html.file.name
 )
 
 mod.sum
 
+species.goat <- 'Goat'
 
-gg.goat.compare <- 
+goats.cc.f1.lo.ndf$formula <- 'Equation 1'
+goats.cc.f1.lo.ndf$ndf.level <- 'Low NDF'
+goats.cc.f1.lo.ndf$species <- species.goat
+
+goats.cc.f2.lo.ndf$formula <- 'Equation 2'
+goats.cc.f2.lo.ndf$ndf.level <- 'Low NDF'
+goats.cc.f2.lo.ndf$species <- species.goat
+
+goats.cc.f3.lo.ndf$formula <- 'Equation 3'
+goats.cc.f3.lo.ndf$ndf.level <- 'Low NDF'
+goats.cc.f3.lo.ndf$species <- species.goat
+
+goats.cc.f1.hi.ndf$formula <- 'Equation 1'
+goats.cc.f1.hi.ndf$ndf.level <- 'High NDF'
+goats.cc.f1.hi.ndf$species <- species.goat
+
+goats.cc.f2.hi.ndf$formula <- 'Equation 2'
+goats.cc.f2.hi.ndf$ndf.level <- 'High NDF'
+goats.cc.f2.hi.ndf$species <- species.goat
+
+goats.cc.f3.hi.ndf$formula <- 'Equation 3'
+goats.cc.f3.hi.ndf$ndf.level <- 'High NDF'
+goats.cc.f3.hi.ndf$species <- species.goat
+
+colnames(goats.cc.f1.lo.ndf)
+colnames(goats.cc.f2.lo.ndf)
+colnames(goats.cc.f3.lo.ndf)
+colnames(goats.cc.f1.hi.ndf)
+colnames(goats.cc.f2.lo.ndf)
+colnames(goats.cc.f3.lo.ndf)
+
+gg.dat.all <- rbind(
+  goats.cc.f1.lo.ndf
+  , goats.cc.f2.lo.ndf 
+  , goats.cc.f3.lo.ndf 
+  ,  goats.cc.f1.hi.ndf 
+  , goats.cc.f2.hi.ndf 
+  , goats.cc.f3.hi.ndf 
+  )
 
 
+gg.sheep.compare <- ggplot( gg.dat.all    ) +
+  geom_point( aes( x =   feeding.level.g.d.kg.bw, y = fitted        ) , ) +
+  geom_line(aes(x = feeding.level.g.d.kg.bw , y = feeding.level.g.d.kg.bw)) + 
+  facet_grid( ~   species + formula + ndf.level , scales = 'fixed')  
+
+gg.sheep.compare 
+
+  
 
 # --- SHEEP
 sheep <- d[  d$Species %in% species.sheep  , ]
 
-vars.1 <- c(
+form.1 <- c(
 'feed_intake_g_d'
 ,  'bw_kg'
 , 'adg_g_day'
@@ -545,7 +725,7 @@ vars.2 <- c(
   , 'Stage'
 )
 
-sheep.cc <- sheep[complete.cases(sheep[,vars.1]),]
+sheep.cc <- sheep[complete.cases(sheep[,form.1]),]
   
 
 
