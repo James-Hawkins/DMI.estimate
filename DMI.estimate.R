@@ -791,24 +791,26 @@ sheep.cc.lo.NDF <- sheep.cc[sheep.cc$NDF_nutrition <= ndf.thresh.lo, ]
 sheep.cc.hi.NDF <- sheep.cc[sheep.cc$NDF_nutrition >= ndf.thresh.hi, ]
 
 
-
+sheep.cc.lo.NDF$adg.sqrd <- sheep.cc.lo.NDF$adg_g_day ^2
 
 sp.mod.1.lo.NDF <- lmer( 
   feeding.level.g.d.kg.bw ~  bw_kg 
   +  log(adg_g_day)
-  + log(CP_nutrition )
+  + adg_g_day
+ # + adg.sqrd 
+ # + log(CP_nutrition )
   +   #+ CP_nutrition *   CP_nutrition 
   #+  NDF_nutrition
-  +    log(NDF_nutrition )
-  + Ash_nutrition
-  + EE_nutrition
+ # +    log(NDF_nutrition )
+ # + Ash_nutrition
+ # + EE_nutrition
   + (
     1 
-  # + bw_kg 
-   # + adg_g_day 
-   # + CP_nutrition 
+   + bw_kg 
+    + adg_g_day 
+    + CP_nutrition 
    # +  NDF_nutrition
-   # + Ash_nutrition
+  #  + Ash_nutrition
   #  + EE_nutrition
       | B.Code)
 # , weights = .1 * sheep.cc.lo.NDF$T.Animals / (max(na.omit(sheep.cc.lo.NDF$T.Animals)) - min(na.omit(sheep.cc.lo.NDF$T.Animals)))
@@ -816,8 +818,19 @@ sp.mod.1.lo.NDF <- lmer(
  , data = sheep.cc.lo.NDF
   )
 
+summary(sp.mod.1.lo.NDF )
+
 r.squaredGLMM(sp.mod.1.lo.NDF)
 rmse(sp.mod.1.lo.NDF) / mean((predict(sp.mod.1.lo.NDF)))
+
+
+stepw <- step(  sp.mod.1.lo.NDF  
+                , direction = 'backward' 
+                , scope = formula(sp.mod.1.lo.NDF  )
+                , steps = 1000)
+
+
+
 
 sheep.cc.lo.NDF$fitted <- predict(sp.mod.1.lo.NDF)
 
