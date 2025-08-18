@@ -795,8 +795,8 @@ sheep.cc.lo.NDF$adg.sqrd <- sheep.cc.lo.NDF$adg_g_day ^2
 
 sp.mod.1.lo.NDF <- lmer( 
   feeding.level.g.d.kg.bw ~  bw_kg 
-  +  log(adg_g_day)
-  + adg_g_day
+ # +  log(adg_g_day)
+#  + adg_g_day
  # + adg.sqrd 
  # + log(CP_nutrition )
   +   #+ CP_nutrition *   CP_nutrition 
@@ -806,9 +806,9 @@ sp.mod.1.lo.NDF <- lmer(
  # + EE_nutrition
   + (
     1 
-   + bw_kg 
-    + adg_g_day 
-    + CP_nutrition 
+ #  + bw_kg 
+   # + adg_g_day 
+   # + CP_nutrition 
    # +  NDF_nutrition
   #  + Ash_nutrition
   #  + EE_nutrition
